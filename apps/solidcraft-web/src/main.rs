@@ -20,6 +20,8 @@ mod install;
 mod linked;
 #[cfg(any(target_arch = "wasm32", test))]
 mod space_mouse;
+#[cfg(target_arch = "wasm32")]
+mod touch;
 
 /// The browser switches tabs with Ctrl+Tab and Ctrl+Shift+Tab, so the page leaves those keys to
 /// it (#5227); plain Tab and Shift+Tab still move between the app's fields. (Ctrl+PageUp and
@@ -309,6 +311,8 @@ mod web {
         font_language: String,
         space_mouse: SpaceMouse,
         wheel_gestures: solidcraft_ui_egui::WebWheelGestures,
+        /// Fingers and the pen on a touch screen (an iPad with Apple Pencil).
+        touch: solidcraft_ui_egui::touch_input::TouchInput,
         /// The settings this tab wrote or loaded last, and those another tab wrote since (#8644).
         prefs_writer: crate::PrefsWriter,
         other_tab_prefs: PrefsInbox,
@@ -486,21 +490,28 @@ mod web {
                 // Room for long names; the kit still caps the window at the browser's width.
                 .cards(4.0)
                 .show_body(ctx, |ui| {
+                    // An iPad's (or iPhone's) picker and share sheet are the Files app: iCloud Drive,
+                    // OneDrive, Google Drive and the device.
+                    let tablet = files::apple_touch();
+                    let (open_label, download_label) =
+                        if tablet { ("Open from Files…", "Save to Files…") } else { ("Open from computer…", "Download open design") };
                     ui.horizontal(|ui| {
-                        if ui_kit::button(ui, "Open from computer…", ui_kit::Button::Normal).clicked() {
+                        if ui_kit::button(ui, open_label, ui_kit::Button::Normal).clicked() {
                             files::pick_from_disk(&self.files, Intent::Open);
                         }
-                        if ui_kit::button(ui, "Insert from computer…", ui_kit::Button::Normal)
+                        if ui_kit::button(ui, if tablet { "Insert from Files…" } else { "Insert from computer…" }, ui_kit::Button::Normal)
                             .on_hover_text(solidcraft_ui_egui::i18n::tr("web.files.insert_drawings_hint"))
                             .clicked()
                         {
                             files::pick_from_disk(&self.files, Intent::Insert);
                         }
-                        if ui_kit::button(ui, "Download open design", ui_kit::Button::Normal).clicked() {
+                        if ui_kit::button(ui, download_label, ui_kit::Button::Normal).clicked() {
                             act = Some(("download_open", String::new()));
                         }
                     });
-                    if !disk::supported() {
+                    if tablet {
+                        ui.weak("Save to Files puts a copy in iCloud Drive, OneDrive, Google Drive or on this device. Designs you save also stay in this browser.");
+                    } else if !disk::supported() {
                         ui.weak("This browser can't save to a folder: designs stay in this browser. Download design saves a file.");
                     }
                     ui.separator();
@@ -801,6 +812,8 @@ mod web {
             if let Some(delay) = self.wheel_gestures.update(raw, now) {
                 ctx.request_repaint_after(delay);
             }
+            let samples = crate::touch::take(CANVAS_ID, ctx);
+            self.touch.update(ctx, raw, &samples, now, self.app.preferences.touch_gestures);
             if self.launch.persists() {
                 let theme = solidcraft_ui_egui::prefs::theme_drop_target(&self.app, ctx);
                 files::take_drops(&self.files, raw, theme);
@@ -964,6 +977,7 @@ mod web {
                         // Listening before reading: settings another tab writes from now on are
                         // newer than those read here.
                         let other_tab_prefs = PrefsInbox::default();
+                        crate::touch::listen(&window, &cc.egui_ctx);
                         if launch.persists() {
                             hear_settings_from_other_tabs(&window, &cc.egui_ctx, other_tab_prefs.clone());
                         }
@@ -1013,6 +1027,7 @@ mod web {
                             font_language,
                             space_mouse: SpaceMouse::default(),
                             wheel_gestures: solidcraft_ui_egui::WebWheelGestures::default(),
+                            touch: Default::default(),
                             prefs_writer: crate::PrefsWriter::default(),
                             other_tab_prefs,
                         }))

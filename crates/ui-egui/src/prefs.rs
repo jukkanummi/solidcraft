@@ -1274,6 +1274,10 @@ preference_settings! {
     zoom_stop_at_model: bool = false, PAGE_NAVIGATION => check_id("prefs.zoom_stop_at_model");
     /// Spread discrete wheel input across frames (off: apply each event immediately).
     smooth_wheel_zoom: bool = true, PAGE_NAVIGATION => check("Smooth wheel zoom", "Turn off to apply each wheel event immediately, without a smoothing tail");
+    /// Touch screens (the browser app on a tablet): one finger on the model turns the view, two
+    /// pan and pinch zoom, a tap clicks, a hold opens the context menu and the pen (Apple Pencil)
+    /// is the left button. Off: a finger acts as the mouse everywhere, as before.
+    touch_gestures: bool = true, PAGE_NAVIGATION => check_id("prefs.touch_gestures");
     /// Two-finger trackpad scroll pans (off: it zooms like the wheel); pinch always zooms.
     trackpad_pan: bool = true, PAGE_NAVIGATION;
     /// Hold this modifier alone to zoom with vertical wheel or two-finger scroll.

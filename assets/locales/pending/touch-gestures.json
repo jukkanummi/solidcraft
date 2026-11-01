@@ -1,0 +1,8 @@
+{
+  "en": { "prefs.touch_gestures": "Finger gestures on touch screens (one finger turns the view, two pan and pinch; the pen picks and draws)" },
+  "de": { "prefs.touch_gestures": "Fingergesten auf Touchscreens (ein Finger dreht die Ansicht, zwei verschieben und zoomen; der Stift wählt und zeichnet)" },
+  "fi": { "prefs.touch_gestures": "Sormieleet kosketusnäytöillä (yksi sormi kääntää näkymää, kaksi siirtää ja zoomaa; kynä valitsee ja piirtää)" },
+  "ja": { "prefs.touch_gestures": "タッチ画面の指ジェスチャー（1本指でビューを回転、2本指でパンとピンチズーム。ペンで選択と描画）" },
+  "ko": { "prefs.touch_gestures": "터치스크린 손가락 제스처 (한 손가락은 뷰 회전, 두 손가락은 이동과 핀치 확대; 펜은 선택과 그리기)" },
+  "zh": { "prefs.touch_gestures": "触摸屏手指手势（单指旋转视图，双指平移和捏合缩放；笔用于选择和绘制）" }
+}

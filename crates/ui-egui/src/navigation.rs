@@ -821,7 +821,28 @@ pub(crate) fn handle(app: &mut SolveApp, ui: &mut egui::Ui, rect: Rect, resp: &e
             }
         }
     }
-    if !dragging && motion.is_none() && !(trackpad_orbit && app.viewport.trackpad_gesture) {
+    // Fingers on a touch screen (the browser app on a tablet, `touch_input`): one turns the view
+    // (pans a flat page), two pan with the fingers and pinch zooms between them.
+    crate::touch_input::set_target(ui.ctx(), rect, ui.layer_id(), caps.orbit);
+    let touch = crate::touch_input::take_camera(ui.ctx()).unwrap_or_default();
+    if touch.moves() {
+        app.cancel_view_animation();
+        app.viewport.spin = false;
+        if caps.orbit && touch.orbit != egui::Vec2::ZERO && touch.orbit.is_finite() {
+            orbit_drag(app, rect, f64::from(touch.orbit.x), f64::from(touch.orbit.y), touch.orbit_from, false, true);
+        }
+        if touch.pan != egui::Vec2::ZERO && touch.pan.is_finite() {
+            app.viewport.orbit_free = None;
+            app.cam.pan(f64::from(touch.pan.x), f64::from(touch.pan.y), h);
+        }
+        if touch.zoom.is_finite() && touch.zoom > 0.0 && touch.zoom != 1.0 {
+            app.viewport.orbit_free = None;
+            // Spread zooms in: the camera distance shrinks by the pinch factor.
+            let anchor = zoom_anchor(app, rect, touch.centre, caps.orbit);
+            app.cam.zoom_at((1.0 / f64::from(touch.zoom)).clamp(0.05, 20.0), anchor);
+        }
+    }
+    if !dragging && motion.is_none() && !touch.active && !(trackpad_orbit && app.viewport.trackpad_gesture) {
         app.viewport.orbit_pivot = None;
         app.viewport.orbit_from = None;
     }
