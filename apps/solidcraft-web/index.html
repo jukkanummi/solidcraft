@@ -27,6 +27,11 @@
   <link data-trunk rel="copy-file" href="../../assets/fonts/craft-ui-tc/CraftUI-TC.otf" data-target-path="fonts" />
   <link data-trunk rel="copy-file" href="../../assets/fonts/craft-ui-tc/OFL.txt" data-target-path="fonts/craft-ui-tc" />
   <link data-trunk rel="css" href="../../assets/styles/web/loading.css" />
+  <!-- Touch screens: every touch on the app goes to the app (fingers navigate, Apple Pencil picks
+       and draws), never to the browser's scrolling, page zoom, text selection or long-press callout. -->
+  <style>#solidcraft_canvas { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }</style>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <link data-trunk rel="copy-file" href="../../assets/styles/web/loading-logo.svg" />
   <!-- Installable as an app (manifest.webmanifest); the icons are the Linux exports of the app mark. -->
   <meta name="theme-color" content="#343840">

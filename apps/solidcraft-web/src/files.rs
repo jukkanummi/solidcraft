@@ -354,6 +354,59 @@ pub fn flush(files: &Rc<Files>) {
 
 /// Hand `bytes` to the user as a download named `name`.
 pub fn download(name: &str, bytes: &[u8]) -> Result<(), String> {
+    // An iPad or iPhone hands the file to the share sheet: its Save to Files reaches every
+    // place the Files app has (iCloud Drive, OneDrive, Google Drive, Dropbox, the device).
+    if apple_touch() && share(name, bytes) {
+        return Ok(());
+    }
+    save_by_link(name, bytes)
+}
+
+/// Offer `bytes` as the file `name` in the system share sheet (Web Share with files, which
+/// Safari on iPadOS and iOS has). `false`: the browser can't share it, so it is downloaded
+/// instead. A sheet the user closes is not an error; a share the browser refuses (it no longer
+/// counts the tap as the user's) falls back to a download.
+fn share(name: &str, bytes: &[u8]) -> bool {
+    let Some(nav) = web_sys::window().map(|w| w.navigator()) else {
+        return false;
+    };
+    let parts = Array::new();
+    parts.push(&Uint8Array::from(bytes));
+    let opts = web_sys::FilePropertyBag::new();
+    opts.set_type(disk::save_type(name).1);
+    let Ok(file) = web_sys::File::new_with_u8_array_sequence_and_options(&parts, name, &opts) else {
+        return false;
+    };
+    let data = Object::new();
+    let list = Array::new();
+    list.push(&file);
+    if Reflect::set(&data, &"files".into(), &list).is_err() {
+        return false;
+    }
+    let call = |method: &str| -> Option<JsValue> {
+        let f = Reflect::get(&nav, &method.into()).ok()?.dyn_into::<Function>().ok()?;
+        f.call1(&nav, &data).ok()
+    };
+    if !call("canShare").is_some_and(|ok| ok.is_truthy()) {
+        return false;
+    }
+    let Some(promise) = call("share").and_then(|p| p.dyn_into::<js_sys::Promise>().ok()) else {
+        return false;
+    };
+    let (name, bytes) = (name.to_string(), bytes.to_vec());
+    spawn_local(async move {
+        if let Err(e) = JsFuture::from(promise).await {
+            let error = Reflect::get(&e, &"name".into()).ok().and_then(|n| n.as_string()).unwrap_or_default();
+            if !disk::is_abort(&error) {
+                let _ = save_by_link(&name, &bytes);
+            }
+        }
+    });
+    true
+}
+
+/// Download `bytes` as `name` through a link (the browser's Downloads).
+fn save_by_link(name: &str, bytes: &[u8]) -> Result<(), String> {
     let doc = web_sys::window().and_then(|w| w.document()).ok_or("no document")?;
     let parts = Array::new();
     parts.push(&Uint8Array::from(bytes));
@@ -581,7 +634,7 @@ pub fn pick_upload(files: &Rc<Files>, extensions: &[&str]) -> impl std::future::
 }
 
 /// The page runs on an iPhone or iPad, whose file inputs offer every file (`disk::input_accept`).
-fn apple_touch() -> bool {
+pub fn apple_touch() -> bool {
     web_sys::window().is_some_and(|w| {
         let nav = w.navigator();
         disk::apple_touch(&nav.user_agent().unwrap_or_default(), nav.max_touch_points())
