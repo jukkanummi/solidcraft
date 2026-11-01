@@ -137,6 +137,9 @@ pub(super) fn show(app: &mut SolveApp, ui: &mut egui::Ui, t: &Tokens) {
                         .on_hover_text(if touchpad { crate::i18n::tr("nav.touchpad.scroll") } else { crate::i18n::tr("ui.trackpad_pan_tip") });
                 });
                 setting::radial_context_menu(app, ui);
+                // The browser app on a tablet: fingers navigate, the pen is the mouse (`touch_input`).
+                let touch = setting::touch_gestures(app, ui);
+                crate::scenario::publish_target("prefs:touch_gestures", touch.rect);
             });
         });
         ui_kit::row(ui, app.tr("prefs.trackpad_zoom_modifier"), |ui| {
